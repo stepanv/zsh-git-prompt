@@ -66,15 +66,15 @@ git_timestamp_millis() {
 }
 
 git_super_status() {
-    CACHED_TIMESTAMP=$(cat "$__GIT_PROMPT_DIR/git.prompt.timestamp")
     CURRENT_TIMESTAMP=$(($(gdate +"%s%N")/1000000))
-    echo $CURRENT_TIMESTAMP > "$__GIT_PROMPT_DIR/git.prompt.timestamp"
+    CACHED_TIMESTAMP=$([ -f "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp" ] && cat "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp" || echo 0)
+    echo $CURRENT_TIMESTAMP > "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp"
 
     if [ "$(expr $CURRENT_TIMESTAMP - $CACHED_TIMESTAMP)" -gt 500 ]; then
-        git_super_status_not_cached > "$__GIT_PROMPT_DIR/git.prompt.cached"
+        git_super_status_not_cached > "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached"
     fi
 
-    STATUS=$(cat "$__GIT_PROMPT_DIR/git.prompt.cached")
+    STATUS=$(cat "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached")
     if [ "$STATUS" = "" ]; then
         echo ""
     else
