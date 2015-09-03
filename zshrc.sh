@@ -5,7 +5,7 @@
 # h: equivalent to dirname
 export __GIT_PROMPT_DIR=${0:A:h}
 
-export GIT_PROMPT_EXECUTABLE=${GIT_PROMPT_USE_PYTHON:-"python"}
+#export GIT_PROMPT_EXECUTABLE=${GIT_PROMPT_USE_PYTHON:-"python"}
 
 # Initialize colors.
 autoload -U colors
@@ -18,7 +18,7 @@ autoload -U add-zsh-hook
 
 add-zsh-hook chpwd chpwd_update_git_vars
 add-zsh-hook preexec preexec_update_git_vars
-add-zsh-hook precmd precmd_update_git_vars
+#add-zsh-hook precmd precmd_update_git_vars
 
 ## Function definitions
 function preexec_update_git_vars() {
@@ -61,8 +61,27 @@ function update_current_git_vars() {
 	GIT_UNTRACKED=$__CURRENT_GIT_STATUS[7]
 }
 
+git_timestamp_millis() {
+    python -c 'import time; print int(time.time() * 1000)'
+}
 
 git_super_status() {
+    CACHED_TIMESTAMP=$(cat "$__GIT_PROMPT_DIR/git.prompt.timestamp")
+    CURRENT_TIMESTAMP=$(($(gdate +"%s%N")/1000000))
+    echo $CURRENT_TIMESTAMP > "$__GIT_PROMPT_DIR/git.prompt.timestamp"
+
+    if [ "$(expr $CURRENT_TIMESTAMP - $CACHED_TIMESTAMP)" -gt 500 ]; then
+        git_super_status_not_cached > "$__GIT_PROMPT_DIR/git.prompt.cached"
+    fi
+
+    STATUS=$(cat "$__GIT_PROMPT_DIR/git.prompt.cached")
+    if [ "$STATUS" = "" ]; then
+        echo ""
+    else
+        echo "$STATUS "
+    fi
+}
+git_super_status_not_cached() {
 	precmd_update_git_vars
     if [ -n "$__CURRENT_GIT_STATUS" ]; then
 	  STATUS="$ZSH_THEME_GIT_PROMPT_PREFIX$ZSH_THEME_GIT_PROMPT_BRANCH$GIT_BRANCH%{${reset_color}%}"
