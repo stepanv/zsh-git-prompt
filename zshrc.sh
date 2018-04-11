@@ -61,26 +61,38 @@ function update_current_git_vars() {
 	GIT_UNTRACKED=$__CURRENT_GIT_STATUS[7]
 }
 
-git_timestamp_millis() {
-    python -c 'import time; print int(time.time() * 1000)'
-}
-
 git_super_status() {
     CURRENT_TIMESTAMP=$(($(gdate +"%s%N")/1000000))
     CACHED_TIMESTAMP=$([ -f "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp" ] && cat "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp" || echo 0)
-    echo $CURRENT_TIMESTAMP > "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp"
+    (
+        FILE="$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp.$CURRENT_TIMESTAMP"
+        echo $CURRENT_TIMESTAMP > "$FILE"
+        [ -s "$FILE" ] && mv "$FILE" "$TMPDIR/git.prompt.$ITERM_SESSION_ID.timestamp"
+    ) >/dev/null &!
 
     if [ "$(expr $CURRENT_TIMESTAMP - $CACHED_TIMESTAMP)" -gt 500 ]; then
-        git_super_status_not_cached > "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached"
+        git_super_status_update_cache_atomically $CURRENT_TIMESTAMP $CACHED_TIMESTAMP
     fi
 
-    STATUS=$(cat "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached")
+    STATUS=$([ -f "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached" ] && cat "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached" || echo -n "")
     if [ "$STATUS" = "" ]; then
         echo ""
     else
         echo "$STATUS "
     fi
 }
+
+git_super_status_update_cache_atomically() {
+    CURRENT_TIMESTAMP=${1?"Current timestamp required as a first parameter!"}
+    CACHED_TIMESTAMP=${2?"Cached timestamp required as a first parameter!"}
+    ( 
+        FILE="$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached.$CURRENT_TIMESTAMP"
+        git_super_status_not_cached > "$FILE"
+        [ -s "$FILE" ] && mv "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached.$CURRENT_TIMESTAMP" "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached"
+        #mv "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached.$CURRENT_TIMESTAMP" "$TMPDIR/git.prompt.$ITERM_SESSION_ID.cached"
+    ) >/dev/null &!
+}
+
 git_super_status_not_cached() {
 	precmd_update_git_vars
     if [ -n "$__CURRENT_GIT_STATUS" ]; then
@@ -109,20 +121,23 @@ git_super_status_not_cached() {
 	  fi
 	  STATUS="$STATUS%{${reset_color}%}$ZSH_THEME_GIT_PROMPT_SUFFIX"
 	  echo "$STATUS"
+    else
+      echo " "
 	fi
+    
 }
 
 # Default values for the appearance of the prompt. Configure at will.
 ZSH_THEME_GIT_PROMPT_PREFIX="("
 ZSH_THEME_GIT_PROMPT_SUFFIX=")"
 ZSH_THEME_GIT_PROMPT_SEPARATOR="|"
-ZSH_THEME_GIT_PROMPT_BRANCH="%{$fg_bold[magenta]%}"
-ZSH_THEME_GIT_PROMPT_STAGED="%{$fg[red]%}%{●%G%}"
-ZSH_THEME_GIT_PROMPT_CONFLICTS="%{$fg[red]%}%{✖%G%}"
-ZSH_THEME_GIT_PROMPT_CHANGED="%{$fg[blue]%}%{✚%G%}"
+ZSH_THEME_GIT_PROMPT_BRANCH="%{$FG[214]%}"
+ZSH_THEME_GIT_PROMPT_STAGED="%{$FG[196]%}%{●%G%}"
+ZSH_THEME_GIT_PROMPT_CONFLICTS="%{$FG[196]%}%{✖%G%}"
+ZSH_THEME_GIT_PROMPT_CHANGED="%{$FG[075]%}%{✚%G%}"
 ZSH_THEME_GIT_PROMPT_BEHIND="%{↓%G%}"
 ZSH_THEME_GIT_PROMPT_AHEAD="%{↑%G%}"
 ZSH_THEME_GIT_PROMPT_UNTRACKED="%{…%G%}"
-ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg_bold[green]%}%{✔%G%}"
+ZSH_THEME_GIT_PROMPT_CLEAN="%{$FG[155]%}%{✔%G%}"
 
 
